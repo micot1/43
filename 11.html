@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>AEGIS TACTICAL DATABASE v2.0</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
+
+        :root {
+            /* 컬러 팔레트 */
+            --gov-color: #00a8ff; /* 정부군: 블루/시안 */
+            --pmc-color: #e84118; /* PMC: 레드/오렌지 */
+            --bg-dark: #0a0a0a;
+            --card-bg: #141414;
+            --text-main: #f0f0f0;
+            --text-sub: #a0a0a0;
+            --border-color: #333;
+            --accent-glow: rgba(255, 255, 255, 0.1);
+        }
+
+        * { box-sizing: border-box; outline: none; }
+        
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* --- [강화] 인트로 로딩 --- */
+        #boot-layer {
+            position: fixed; inset: 0; background: #000; z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            flex-direction: column;
+            transition: opacity 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .boot-container { text-align: center; position: relative; }
+        .boot-logo {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 5rem; font-weight: 700; letter-spacing: 15px;
+            color: #fff; text-transform: uppercase;
+            position: relative; margin-bottom: 20px;
+            filter: drop-shadow(0 0 15px rgba(255,255,255,0.4));
+        }
+        .boot-bar {
+            width: 300px; height: 2px; background: #222;
+            margin: 0 auto; position: relative; overflow: hidden;
+        }
+        .boot-progress {
+            position: absolute; left: -100%; width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+            animation: loading-scan 2s infinite linear;
+        }
+        .boot-logs {
+            margin-top: 20px; font-family: monospace; font-size: 0.8rem;
+            color: #555; height: 1.2rem; overflow: hidden;
+        }
+        .scanline {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%; pointer-events: none; z-index: 10000;
+        }
+
+        @keyframes loading-scan {
+            0% { left: -100%; } 100% { left: 100%; }
+        }
+
+        /* --- 네비게이션 --- */
+        .navbar {
+            position: fixed; top: 0; width: 100%; height: 70px;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 5%; z-index: 1000;
+        }
+        .nav-logo { font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700; color: #fff; letter-spacing: 2px; cursor: pointer; }
+        .nav-status { font-family: 'monospace'; color: var(--gov-color); font-size: 0.9rem; border: 1px solid var(--gov-color); padding: 4px 8px; border-radius: 4px; }
+
+        /* --- 메인 헤더 --- */
+        .header-section {
+            margin-top: 70px;
+            padding: 80px 5% 40px 5%;
+            background: linear-gradient(180deg, #111 0%, rgba(10,10,10,0) 100%);
+            border-bottom: 1px solid #222;
+        }
+        .header-title { font-size: 3.5rem; font-weight: 900; margin: 0; line-height: 1.1; letter-spacing: -1px; }
+        .header-desc { max-width: 800px; color: var(--text-sub); margin-top: 20px; line-height: 1.6; font-size: 1.1rem; }
+
+        /* --- 세계관/설정 브리핑 섹션 --- */
+        .briefing-section {
+            padding: 40px 5%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .briefing-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .briefing-card:hover { border-color: #fff; transform: translateY(-5px); background: #222; }
+        .briefing-icon { font-size: 2rem; margin-bottom: 15px; display: block; }
+        .briefing-title { font-size: 1.5rem; font-weight: 800; margin-bottom: 10px; color: #fff; font-family: 'Rajdhani', sans-serif; text-transform: uppercase; }
+        .briefing-preview { color: #888; font-size: 0.95rem; line-height: 1.5; }
+        .read-more { margin-top: 15px; display: inline-block; font-size: 0.8rem; font-weight: bold; color: #fff; border-bottom: 1px solid #fff; }
+
+        /* --- 로스터(캐릭터) 섹션 --- */
+        .roster-section { padding: 40px 5%; }
+        .division-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 30px; border-bottom: 2px solid #333; padding-bottom: 10px;
+        }
+        .division-title { font-size: 2rem; font-weight: 900; letter-spacing: -1px; }
+        .division-tag { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: 700; letter-spacing: 2px; }
+        
+        .gov-theme .division-title { color: var(--gov-color); text-shadow: 0 0 10px rgba(0, 168, 255, 0.3); }
+        .gov-theme .division-header { border-color: var(--gov-color); }
+        .pmc-theme .division-title { color: var(--pmc-color); text-shadow: 0 0 10px rgba(232, 65, 24, 0.3); }
+        .pmc-theme .division-header { border-color: var(--pmc-color); }
+
+        .roster-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .agent-card {
+            background-color: var(--card-bg);
+            border-radius: 4px; overflow: hidden; position: relative;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            cursor: pointer; border: 1px solid #333; height: 360px;
+        }
+        .agent-card:hover { transform: translateY(-10px); z-index: 10; border-color: #888; }
+        .agent-card:hover .agent-img { transform: scale(1.1); filter: grayscale(0%); }
+
+        .img-wrapper { width: 100%; height: 100%; position: relative; overflow: hidden; }
+        .agent-img { width: 100%; height: 100%; object-fit: cover; transition: 0.5s; filter: grayscale(50%); }
+        .img-overlay {
+            position: absolute; bottom: 0; left: 0; width: 100%; height: 50%;
+            background: linear-gradient(to top, rgba(0,0,0,0.95), transparent);
+            display: flex; flex-direction: column; justify-content: flex-end; padding: 20px;
+        }
+        .agent-role { font-size: 0.7rem; font-weight: 700; margin-bottom: 4px; opacity: 0.8; letter-spacing: 1px; }
+        .agent-name { font-size: 1.3rem; font-weight: 700; color: #fff; margin: 0; }
+
+        /* --- [강화] 상세 모달 (상단 이미지 배치) --- */
+        #modal-layer {
+            display: none; position: fixed; inset: 0; z-index: 2000;
+            background: rgba(0,0,0,0.9); backdrop-filter: blur(10px);
+            overflow-y: auto; padding: 20px;
+        }
+        .modal-content {
+            max-width: 800px; margin: 40px auto;
+            background: #111; border: 1px solid #444;
+            display: flex; flex-direction: column; /* 세로 배치로 변경 */
+            box-shadow: 0 0 50px rgba(0,0,0,1); position: relative;
+            animation: modal-up 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        @keyframes modal-up {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-visual { 
+            width: 100%; height: 450px; /* 높이 고정 및 상단 배치 */
+            position: relative; overflow: hidden;
+            border-bottom: 2px solid #333;
+        }
+        .modal-visual img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; }
+        .modal-visual::after {
+            content: ''; position: absolute; inset: 0;
+            background: linear-gradient(to bottom, transparent 60%, #111);
+        }
+        
+        .modal-info { padding: 40px; position: relative; }
+        .btn-close {
+            position: absolute; top: -20px; right: -20px;
+            width: 50px; height: 50px; background: #fff; border: none;
+            color: #000; font-size: 30px; cursor: pointer; z-index: 2100;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .info-header { border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+        .scramble-title { font-size: 3rem; font-weight: 800; margin: 0; line-height: 1; margin-bottom: 10px; }
+        .match-rate { font-family: 'Rajdhani', sans-serif; font-size: 1.2rem; font-weight: 700; color: #888; margin-bottom: 5px; }
+
+        .tag-container { display: flex; gap: 8px; flex-wrap: wrap; }
+        .info-tag { background: #222; border: 1px solid #444; padding: 4px 10px; font-size: 0.8rem; color: #ccc; border-radius: 2px; }
+
+        .desc-box { margin-bottom: 25px; }
+        .desc-label { font-size: 0.9rem; color: var(--text-sub); font-weight: 700; margin-bottom: 8px; text-transform: uppercase; border-left: 3px solid #555; padding-left: 10px; }
+        .desc-text { font-size: 1.05rem; line-height: 1.7; color: #ddd; }
+
+    </style>
+</head>
+<body>
+
+<div id="boot-layer">
+    <div class="boot-container">
+        <div class="boot-logo">AEGIS</div>
+        <div class="boot-bar"><div class="boot-progress"></div></div>
+        <div class="boot-logs" id="boot-logs">SYSTEM INITIALIZING...</div>
+    </div>
+</div>
+<div class="scanline"></div>
+
+<nav class="navbar">
+    <div class="nav-logo" onclick="location.reload()">AEGIS <span>SYSTEM</span></div>
+    <div class="nav-status">SECURITY LEVEL: ALPHA</div>
+</nav>
+
+<section class="header-section">
+    <h1 class="header-title">이지스(AEGIS) 통합 작전실</h1>
+    <p class="header-desc">
+        2025년 서울 '대균열(Great Rift)' 사태 이후, 이지스 7지부는 정부군 정예 요원과 PMC 계약직 용병들을 혼합 편성하여 최전선을 방어하고 있습니다.
+        <br>총 10명의 대원 명단과 현재 작전 지역의 브리핑 정보를 확인하십시오.
+    </p>
+</section>
+
+<section class="briefing-section">
+    <div class="briefing-card" onclick="openModal('world')">
+        <span class="briefing-icon">🌏</span>
+        <div class="briefing-title">WORLD: 2025 SEOUL</div>
+        <div class="briefing-preview">서울 상공에 거대한 웜홀 '대균열'이 발생했습니다. 강남, 잠실 등 서울의 40%가 오염 구역으로 지정되었습니다.</div>
+        <div class="read-more">세계관 상세 보기 ></div>
+    </div>
+    
+    <div class="briefing-card" onclick="openModal('org')">
+        <span class="briefing-icon">🛡️</span>
+        <div class="briefing-title">ORGANIZATION</div>
+        <div class="briefing-preview">UN 산하 범국가적 대응기관 AEGIS 7지부. 당신은 이곳의 지휘관으로 부임하여 이질적인 두 집단을 통솔해야 합니다.</div>
+        <div class="read-more">조직 개요 보기 ></div>
+    </div>
+
+    <div class="briefing-card" onclick="openModal('threat')">
+        <span class="briefing-icon">👾</span>
+        <div class="briefing-title">THREATS & MONSTERS</div>
+        <div class="briefing-preview">균열에서 쏟아지는 '보이드 워커'부터 정신을 지배하는 '나이트메어'까지. 식별된 적성 개체들의 정보를 확인하십시오.</div>
+        <div class="read-more">위협체 도감 보기 ></div>
+    </div>
+</section>
+
+<section class="roster-section gov-theme">
+    <div class="division-header">
+        <span class="division-title">정부 직속 특수타격대 (GOV)</span>
+        <span class="division-tag">OFFICIAL FORCES</span>
+    </div>
+    <div class="roster-grid">
+        <div class="agent-card" onclick="openModal('elise')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/0078d4/fff?text=ELISE" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--gov-color)">COMMANDER / FROST</span>
+                    <h3 class="agent-name">엘리즈</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('seraphina')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/3498db/fff?text=SERA" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--gov-color)">HACKER / ANDROID</span>
+                    <h3 class="agent-name">세라피나</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('titan')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/795548/fff?text=TITAN" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--gov-color)">DEFENDER / SUIT</span>
+                    <h3 class="agent-name">타이탄</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('mia')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/f1c40f/fff?text=MIA" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--gov-color)">SPECIAL ASSET / TIME</span>
+                    <h3 class="agent-name">미아</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('noa')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/00bcd4/fff?text=NOA" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--gov-color)">UNKNOWN / DIMENSION</span>
+                    <h3 class="agent-name">노아</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="roster-section pmc-theme">
+    <div class="division-header">
+        <span class="division-title">PMC 전술 계약팀 (MERC)</span>
+        <span class="division-tag">CONTRACTORS</span>
+    </div>
+    <div class="roster-grid">
+        <div class="agent-card" onclick="openModal('jax')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/27ae60/fff?text=JAX" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--pmc-color)">LEADER / HEAVY ARMS</span>
+                    <h3 class="agent-name">잭스</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('vlad')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/e74c3c/fff?text=VLAD" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--pmc-color)">ASSASSIN / BLOOD</span>
+                    <h3 class="agent-name">블라드</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('haru')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/34495e/fff?text=HARU" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--pmc-color)">SWORD MASTER / CYBORG</span>
+                    <h3 class="agent-name">하루</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('kael')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/8e44ad/fff?text=KAEL" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--pmc-color)">ENGINEER / DRONES</span>
+                    <h3 class="agent-name">카엘</h3>
+                </div>
+            </div>
+        </div>
+        <div class="agent-card" onclick="openModal('irene')">
+            <div class="img-wrapper">
+                <img src="https://placehold.co/800x600/e91e63/fff?text=IRENE" class="agent-img">
+                <div class="img-overlay">
+                    <span class="agent-role" style="color:var(--pmc-color)">PYRO / IDOL</span>
+                    <h3 class="agent-name">아이린</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div id="modal-layer">
+    <div class="modal-content">
+        <button class="btn-close" onclick="closeModal()">×</button>
+        <div class="modal-visual" id="modal-img-area"></div>
+        <div class="modal-info">
+            <div class="info-header">
+                <div class="match-rate" id="modal-match"></div>
+                <h1 class="scramble-title" id="modal-title"></h1>
+                <div class="tag-container" id="modal-tags"></div>
+            </div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- [강화] 오디오 및 로딩 로그 ---
+    const logs = [
+        "KERNEL SECURITY CHECK...",
+        "DECRYPTING AEGIS DATABASE...",
+        "ACCESSING SEVENTH DIVISION ROSTER...",
+        "ESTABLISHING SECURE CONNECTION...",
+        "WELCOME, COMMANDER."
+    ];
+    let logIdx = 0;
+    const logEl = document.getElementById('boot-logs');
+    
+    function updateLogs() {
+        if(logIdx < logs.length) {
+            logEl.innerText = logs[logIdx++];
+            setTimeout(updateLogs, 400);
+        }
+    }
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playSound(freq, duration, type='sine') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
+    }
+
+    // --- 텍스트 효과 ---
+    class TextScrambler {
+        constructor(el) {
+            this.el = el;
+            this.chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*가나다라마바사아자차';
+            this.update = this.update.bind(this);
+        }
+        setText(newText) {
+            const oldText = this.el.innerText;
+            const length = Math.max(oldText.length, newText.length);
+            const promise = new Promise((resolve) => (this.resolve = resolve));
+            this.queue = [];
+            for (let i = 0; i < length; i++) {
+                const from = oldText[i] || '';
+                const to = newText[i] || '';
+                const start = Math.floor(Math.random() * 20);
+                const end = start + Math.floor(Math.random() * 20);
+                this.queue.push({ from, to, start, end });
+            }
+            cancelAnimationFrame(this.frameRequest);
+            this.frame = 0;
+            this.update();
+            return promise;
+        }
+        update() {
+            let output = '';
+            let complete = 0;
+            for (let i = 0, n = this.queue.length; i < n; i++) {
+                let { from, to, start, end, char } = this.queue[i];
+                if (this.frame >= end) {
+                    complete++; output += to;
+                } else if (this.frame >= start) {
+                    if (!char || Math.random() < 0.28) {
+                        char = this.chars[Math.floor(Math.random() * this.chars.length)];
+                        this.queue[i].char = char;
+                    }
+                    output += `<span style="color:#888">${char}</span>`;
+                } else { output += from; }
+            }
+            this.el.innerHTML = output;
+            if (complete === this.queue.length) this.resolve();
+            else { this.frameRequest = requestAnimationFrame(this.update); this.frame++; }
+        }
+    }
+
+    // --- 데이터 베이스 (기존 데이터 유지) ---
+    const DB = {
+        elise: {
+            name: "엘리즈 드 보부아르", match: "GOV: SQUAD LEADER", 
+            tags: ["냉기(Frost)", "원거리", "정부소속"],
+            img: "https://placehold.co/1200x800/0078d4/fff?text=ELISE",
+            desc: [
+                {l: "배경 (History)", t: "강남 보부아르 타워 붕괴 사고의 생존자. 정부의 보호 아래 성장했으며, 체온이 영하로 고정되는 희귀 체질입니다."},
+                {l: "능력 (Ability)", t: "대기 중 수분을 급속 동결하여 얼음 창을 생성합니다. 정밀 타격에 능합니다."},
+                {l: "비고 (Report)", t: "원칙주의자. PMC 팀원들의 돌발 행동을 매우 싫어하며 특히 블라드와 사이가 나쁩니다."}
+            ]
+        },
+        seraphina: {
+            name: "세라피나 (Unit-7)", match: "GOV: AI ASSET", 
+            tags: ["해킹(Hacking)", "안드로이드", "서포트"],
+            img: "https://placehold.co/1200x800/3498db/fff?text=SERA",
+            desc: [
+                {l: "배경 (History)", t: "판교 지하 서버실에서 발견된 고성능 AI가 국방과학연구소(ADD)의 최신 안드로이드 바디에 이식되었습니다."},
+                {l: "능력 (Ability)", t: "서울 전역의 CCTV와 교통망을 해킹하여 전장을 통제하고 아군의 퇴로를 확보합니다."},
+                {l: "비고 (Report)", t: "감정 학습 중. PMC 팀원 카엘이 자꾸 분해하려 들어 접근 금지 명령이 내려졌습니다."}
+            ]
+        },
+        titan: {
+            name: "박대석 (타이탄)", match: "GOV: DEFENDER", 
+            tags: ["방어(Shield)", "강화복", "구조"],
+            img: "https://placehold.co/1200x800/795548/fff?text=TITAN",
+            desc: [
+                {l: "배경 (History)", t: "무너지는 건물에서 시민 20명을 구하고 중상을 입은 전직 소방관. 정부의 '타이탄 프로젝트' 지원자로 강화복을 입었습니다."},
+                {l: "능력 (Ability)", t: "3톤 무게의 강화복 '아틀라스'를 입고 적의 돌진을 몸으로 막아내는 이동형 성벽입니다."},
+                {l: "비고 (Report)", t: "팀의 든든한 맏형. PMC와 정부군 사이의 갈등을 중재하는 역할을 자처합니다."}
+            ]
+        },
+        mia: {
+            name: "미아", match: "GOV: SPECIAL ASSET", 
+            tags: ["시간(Time)", "미성년", "요주의"],
+            img: "https://placehold.co/1200x800/f1c40f/fff?text=MIA",
+            desc: [
+                {l: "배경 (History)", t: "등굣길에 차원 균열에 휘말린 후 시간을 다루는 능력을 얻은 여고생입니다. 현재 정부의 특별 관리 대상입니다."},
+                {l: "능력 (Ability)", t: "지정 대상의 시간을 5초 전으로 되돌립니다. 치명상을 입은 아군을 살려낼 수 있습니다."},
+                {l: "비고 (Report)", t: "전투 경험이 전무하여 현장 투입 시 반드시 호위가 필요합니다."}
+            ]
+        },
+        noa: {
+            name: "노아", match: "GOV: UNKNOWN", 
+            tags: ["차원(Dimension)", "비인간", "미지"],
+            img: "https://placehold.co/1200x800/00bcd4/fff?text=NOA",
+            desc: [
+                {l: "배경 (History)", t: "균열 내부에서 걸어 나온 정체불명의 소년. DNA 분석 결과 인간이 아닌 것으로 판명되었습니다."},
+                {l: "능력 (Ability)", t: "공간을 왜곡해 순간 이동하거나 작은 블랙홀을 생성해 적을 압살합니다."},
+                {l: "비고 (Report)", t: "위험도 측정 불가. 오직 지휘관의 명령에만 온순하게 반응합니다. 통제 주의."}
+            ]
+        },
+        jax: {
+            name: "잭스 카터", match: "PMC: TEAM LEADER", 
+            tags: ["탱커(Tank)", "중화기", "용병"],
+            img: "https://placehold.co/1200x800/27ae60/fff?text=JAX",
+            desc: [
+                {l: "배경 (History)", t: "전직 주한미군 특수부대. 한강 방어선 전투에서 두 팔을 잃고 사이버네틱 의수를 장착한 베테랑 용병입니다."},
+                {l: "능력 (Ability)", t: "80mm 유탄 발사기와 에너지 쉴드로 전선을 유지하며 PMC 팀을 이끕니다."},
+                {l: "비고 (Report)", t: "정부 요원들을 '책상물림'이라 부르며 무시하지만, 작전 시에는 누구보다 헌신적입니다."}
+            ]
+        },
+        vlad: {
+            name: "블라드 폰 크로울리", match: "PMC: ASSASSIN", 
+            tags: ["혈액(Blood)", "암살", "광기"],
+            img: "https://placehold.co/1200x800/e74c3c/fff?text=VLAD",
+            desc: [
+                {l: "배경 (History)", t: "이태원 클럽주 출신. 감염 사태 이후 혈액을 무기화하는 능력을 얻어 PMC에 합류했습니다."},
+                {l: "능력 (Ability)", t: "자신의 피를 경화시켜 칼날처럼 사용합니다. 자신이 피를 흘릴수록 더욱 강력해집니다."},
+                {l: "비고 (Report)", t: "심각한 결벽증이 있으나 전투광 기질이 다분합니다. 정부군 리더 엘리즈를 놀리는 것을 즐깁니다."}
+            ]
+        },
+        haru: {
+            name: "키사라기 하루", match: "PMC: VANGUARD", 
+            tags: ["검술(Sword)", "사이보그", "근접"],
+            img: "https://placehold.co/1200x800/34495e/fff?text=HARU",
+            desc: [
+                {l: "배경 (History)", t: "조직에게 배신당해 척추를 다친 후, 전신을 기계화하고 한국으로 건너온 전직 야쿠자입니다."},
+                {l: "능력 (Ability)", t: "고주파 진동검 '무라마사'를 사용하여 콘크리트 벽도 두부처럼 잘라내는 발도술을 구사합니다."},
+                {l: "비고 (Report)", t: "말수가 적고 차를 즐깁니다. 지휘관의 그림자 호위를 자처합니다."}
+            ]
+        },
+        kael: {
+            name: "카엘 (K-L)", match: "PMC: ENGINEER", 
+            tags: ["드론(Drone)", "공학자", "괴짜"],
+            img: "https://placehold.co/1200x800/8e44ad/fff?text=KAEL",
+            desc: [
+                {l: "배경 (History)", t: "세운상가의 천재 공학자. 고철을 모아 만든 드론 군단으로 독자 생존하다가 잭스에게 스카우트되었습니다."},
+                {l: "능력 (Ability)", t: "'호박벌'이라 불리는 자폭 드론 50기를 동시에 조종하여 광역 폭격을 가합니다."},
+                {l: "비고 (Report)", t: "기계와 대화하는 버릇이 있습니다. 세라피나(안드로이드)를 볼 때마다 눈빛이 위험하게 변합니다."}
+            ]
+        },
+        irene: {
+            name: "아이린", match: "PMC: SPECIALIST", 
+            tags: ["화염(Fire)", "아이돌", "광역"],
+            img: "https://placehold.co/1200x800/e91e63/fff?text=IRENE",
+            desc: [
+                {l: "배경 (History)", t: "인기 K-POP 아이돌이었으나 공연 중 능력 각성으로 무대를 불태운 후, 빚을 갚기 위해 용병이 되었습니다."},
+                {l: "능력 (Ability)", t: "노래 소리에 반응하는 푸른 고온의 화염을 조작하여 광범위한 적을 태웁니다."},
+                {l: "비고 (Report)", t: "관종끼가 다분하여 작전 중에도 카메라를 찾습니다. 지휘관에게 팬클럽 가입을 강요합니다."}
+            ]
+        },
+        world: {
+            name: "2025 SEOUL: GREAT RIFT", match: "WARNING: LEVEL 5", tags: ["디스토피아", "차원융합"],
+            img: "https://images.unsplash.com/photo-1480796927426-f609979314bd?q=80&w=1200&auto=format&fit=crop",
+            desc: [{l: "개요 (Overview)", t: "차원 균열 사태로 이계 에너지 유입."}, {l: "현황 (Status)", t: "강남/잠실 오염 구역 지정."}]
+        },
+        org: {
+            name: "AEGIS: 7th DIVISION", match: "SECURITY CLEARANCE", tags: ["특수부대", "인류수호"],
+            img: "https://images.unsplash.com/photo-1595590424283-b8f17842773f?q=80&w=1200&auto=format&fit=crop",
+            desc: [{l: "임무 (Mission)", t: "코드 확보 및 괴수 섬멸."}, {l: "구성 (Composition)", t: "정부군/PMC 연합 체제."}]
+        },
+        threat: {
+            name: "THREAT DATABASE", match: "HOSTILE DETECTED", tags: ["괴수", "공포"],
+            img: "https://images.unsplash.com/photo-1519074069444-1ba4fff66d16?q=80&w=1200&auto=format&fit=crop",
+            desc: [{l: "보이드 워커", t: "흔한 하급 괴수."}, {l: "크림슨 아이", t: "공중 레이저 포격."}, {l: "나이트메어", t: "정신 파괴자."}]
+        }
+    };
+
+    // --- 모달 로직 ---
+    function openModal(id) {
+        if(!DB[id]) return;
+        const data = DB[id];
+        playSound(600, 0.1);
+        
+        document.getElementById('modal-img-area').innerHTML = `<img src="${data.img}">`;
+        document.getElementById('modal-match').innerText = data.match;
+        document.getElementById('modal-tags').innerHTML = data.tags.map(t => `<span class="info-tag">${t}</span>`).join('');
+        
+        const body = document.getElementById('modal-body');
+        body.innerHTML = data.desc.map(item => `
+            <div class="desc-box">
+                <div class="desc-label">${item.l}</div>
+                <div class="desc-text">${item.t}</div>
+            </div>
+        `).join('');
+
+        const layer = document.getElementById('modal-layer');
+        layer.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
+        const scrambler = new TextScrambler(document.getElementById('modal-title'));
+        setTimeout(() => scrambler.setText(data.name), 100);
+    }
+
+    function closeModal() {
+        document.getElementById('modal-layer').style.display = 'none';
+        document.body.style.overflow = 'auto';
+        playSound(300, 0.1);
+    }
+
+    window.onload = () => {
+        updateLogs();
+        setTimeout(() => {
+            const boot = document.getElementById('boot-layer');
+            boot.style.opacity = 0;
+            playSound(800, 0.5, 'square');
+            setTimeout(() => boot.style.display = 'none', 1000);
+        }, 2500);
+    }
+</script>
+
+</body>
+</html>
